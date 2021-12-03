@@ -2,8 +2,12 @@ cmake_minimum_required(VERSION 2.8.3)
 project(robot_calibration)
 
 if (CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX)
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Wall")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
 endif()
+
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 
 find_package(Boost REQUIRED system thread)
 
@@ -134,15 +138,22 @@ target_link_libraries(capture_features robot_calibration
                                 ${OpenCV_LIBS})
 add_dependencies(capture_features robot_calibration)
 
-add_executable(optimize_parameters src/optimize_parameters.cpp)
-target_link_libraries(optimize_parameters robot_calibration
-                                ${Boost_LIBRARIES}
-                                ${catkin_LIBRARIES}
-                                ${CERES_LIBRARIES}
-                                ${tinyxml_LIBRARIES}
-                                ${orocos_kdl_LIBRARIES}
-                                ${OpenCV_LIBS})
-add_dependencies(optimize_parameters robot_calibration)
+add_library(optimize_parameters_lib src/optimize_parameters.cpp)
+target_link_libraries(optimize_parameters_lib
+                      ${Boost_LIBRARIES}
+                      ${catkin_LIBRARIES})
+add_executable(optimize_parameters
+  src/optimize_parameters_main.cpp)
+target_link_libraries(optimize_parameters
+                      optimize_parameters_lib
+                      robot_calibration
+                      ${Boost_LIBRARIES}
+                      ${catkin_LIBRARIES}
+                      ${CERES_LIBRARIES}
+                      ${tinyxml_LIBRARIES}
+                      ${orocos_kdl_LIBRARIES}
+                      ${OpenCV_LIBS})
+add_dependencies(optimize_parameters optimize_parameters_lib robot_calibration)
 
 add_executable(to_rpy src/tools/to_rpy.cpp)
 target_link_libraries(to_rpy robot_calibration
@@ -166,6 +177,7 @@ install(TARGETS
 	calibrate
 	calibrate_base
   capture_features
+  optimize_parameters_lib
   optimize_parameters
 	robot_calibration
 	robot_calibration_feature_finders

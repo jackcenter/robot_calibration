@@ -55,7 +55,7 @@ int main(int argc, char** argv)
   urdf_pub.publish(description_msg);
   bag.write("/robot_description", ros::Time::now(), description_msg);
 
-  bool capture_successful;
+  bool capture_successful = true;
 
   // Auto capture mode
   if (nh.param<bool>("auto_calibration_mode", false))
@@ -74,7 +74,7 @@ int main(int argc, char** argv)
   bag.close();
   ROS_INFO("Done capturing samples");
 
-  return 0;
+  return capture_successful ? 0 : 1;
 }
 
 bool check_parameters(ros::NodeHandle& nh)
@@ -156,7 +156,7 @@ bool run_automatic_capture(ros::NodeHandle& nh,
 {
   // TODO
   robot_calibration_msgs::CalibrationData msg;
-  bool capture_complete = false;
+  // bool capture_complete = false;
 
   ros::Publisher pub = nh.advertise<robot_calibration_msgs::CalibrationData>("/calibration_data", 10);
 
