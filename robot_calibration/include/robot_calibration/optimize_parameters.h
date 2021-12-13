@@ -1,16 +1,18 @@
-#ifndef ROBOT_CALIBRATION_OPTIMIZE_PARAMETERS_H
-#define ROBOT_CALIBRATION_OPTIMIZE_PARAMETERS_H
+#pragma once
 
+#include <optional>
+#include <string>
+#include <utility>
+#include <vector>
 
-/**
-* @brief      Verifies the required parameters have been set and, if not, set default values.
-*
-* @param[in]  node  node handle reference
-*
-* @return     bool indicating whether the parameters are all set.
-*/
-bool check_parameters(ros::NodeHandle& node);
+#include <ros/ros.h>
+#include <rosbag/bag.h>
 
+#include <std_msgs/String.h>
+#include <robot_calibration_msgs/CalibrationData.h>
+
+namespace optimize_parameters
+{
 
 /**
 * @brief      Creates a string for the absoulte path for a file in the home directory.
@@ -19,53 +21,54 @@ bool check_parameters(ros::NodeHandle& node);
 *
 * @return     string representing the absolute path to the file.
 */
-std::string get_absolute_directory(std::string local_dir);
-
+std::string get_absolute_directory(const std::string& local_dir);
 
 /**
-* @brief      Organizes loading data from the rosbag file.
+* @brief      Verifies the required parameters have been set and, if not, set default values.
 *
-* @param[in]  bag_filename      absolute path to the rosbag file.
-* @param[in]  description_msg   holds the robot description string.
-* @param[in]  data              holds the calibration data.
+* @param[in]  node  node handle reference
 *
-* @return     bool indicating whther data loading was successful.
+* @return     bool indicating whether the parameters are all set.
 */
-bool load_data(std::string& bag_filename, 
-                           std_msgs::String& description_msg,
-                           std::vector<robot_calibration_msgs::CalibrationData>& data);
-
+bool check_parameters(const ros::NodeHandle& node);
 
 /**
 * @brief      Opens the rosbag at the given location.
 *
-* @param[in]  bag               rosbag object.
 * @param[in]  bag_filename      absolute path to the rosbag file.
 *
-* @return     bool indicating whether the rosbag could be openned.
+* @return     opened rosbag if opening succeded
 */
-bool open_rosbag(rosbag::Bag& bag, std::string& bag_filename);
-
+std::optional<rosbag::Bag> open_rosbag(const std::string& bag_filename);
 
 /**
 * @brief      Loads the robot description from the rosbag file.
 *
 * @param[in]  bag               rosbag object.
-* @param[in]  description_msg   place to load the robot description from the rosbag.
 *
-* @return     bool indicating whether the data could be loaded.
+* @return     robot_description message if successful
 */
-bool load_robot_description(rosbag::Bag& bag, std_msgs::String& description_msg);
+std::optional<std_msgs::String> load_robot_description(const rosbag::Bag& bag);
 
 
 /**
 * @brief      Loads the calibration data from the rosbag file.
 *
 * @param[in]  bag               rosbag object.
-* @param[in]  description_msg   place to load the robot description from the rosbag.
 *
-* @return     bool indicating whether the data could be loaded.
+* @return     vector of calibration data if successful
 */
-bool load_calibration_data(rosbag::Bag& bag, std::vector<robot_calibration_msgs::CalibrationData>& data);
+std::optional<std::vector<robot_calibration_msgs::CalibrationData>>
+load_calibration_data(const rosbag::Bag& bag);
 
-#endif  // ROBOT_CALIBRATION_OPTIMIZE_PARAMETERS_H
+/**
+* @brief      Organizes loading data from the rosbag file.
+*
+* @param[in]  bag_filename      absolute path to the rosbag file.
+*
+* @return     pair of robot description and calibration data if successful
+*/
+std::optional<std::pair<std_msgs::String, std::vector<robot_calibration_msgs::CalibrationData>>>
+load_data(const std::string& bag_filename);
+
+}  // namespace optimize_parameters

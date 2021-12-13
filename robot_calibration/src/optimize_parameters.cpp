@@ -1,3 +1,7 @@
+#include <optional>
+#include <string>
+#include <utility>
+#include <vector>
 
 #include <ros/ros.h>
 #include <rosbag/bag.h>
@@ -8,63 +12,35 @@
 #include <std_msgs/String.h>
 #include <robot_calibration_msgs/CalibrationData.h>
 
-#include <robot_calibration/ceres/optimizer.h>
 #include <robot_calibration/optimize_parameters.h>
 
 
 // TODO: make topic names not hardcoded 
-void publish_messages(ros::NodeHandle&, std::vector<robot_calibration_msgs::CalibrationData>&);
 
-int main(int argc, char** argv)
+namespace optimize_parameters
 {
-  ros::init(argc, argv,"robot_calibration");
-  ros::NodeHandle nh("~");
 
-  // Parameters
-  std::string bag_filename;                                   // Absolute path to location to save the bagfile
-  bool verbose;                                               // Level of data to output to the screen
+using std::nullopt;
+using std::optional;
+using std::pair;
+using std::string;
+using std::vector;
 
-  if(!check_parameters(nh))
-    return -1;
+string get_absolute_directory(const string& local_dir)
+{
+  ROS_DEBUG_STREAM("getting the absolute path to " << local_dir);
 
-  nh.getParam("bag_filename", bag_filename); 
-  nh.getParam("verbose", verbose);
+  const auto home_dir = getenv("HOME");
+  const auto absolute_path = home_dir + local_dir;
 
-  // Load data
-  ROS_INFO("Loading optimization data");
-  std_msgs::String description_msg;
-  std::vector<robot_calibration_msgs::CalibrationData> data;
-
-  if(!load_data(bag_filename, description_msg, data))
-    return -1;
-
-publish_messages(nh, data);
-  // Run optimization
-  ROS_INFO("Running optimization");
-  robot_calibration::OptimizationParams params;
-  robot_calibration::Optimizer opt(description_msg.data);
-
-  params.LoadFromROS(nh);
-  opt.optimize(params, data, verbose);
-
-  // Output optimization to screen
-  if (verbose)
-  {
-    std::cout << "Parameter Offsets:" << std::endl;
-    std::cout << opt.getOffsets()->getOffsetYAML() << std::endl;
-  }
-
-  ROS_INFO("Done calibrating");
-
-  return 0;
+  return absolute_path;
 }
 
-
-bool check_parameters(ros::NodeHandle& nh)
+bool check_parameters(const ros::NodeHandle& nh)
 {
   bool success = true;
-  std::string verbose_mode_name = "verbose";
-  std::string bag_filename = "bag_filename";
+  string verbose_mode_name = "verbose";
+  string bag_filename = "bag_filename";
 
   // Checks that parameter exists and is a bool
   if (!nh.hasParam(verbose_mode_name))
@@ -77,7 +53,7 @@ bool check_parameters(ros::NodeHandle& nh)
   {
     ROS_ERROR_STREAM("bag filename parameter not set. Setting default location");
 // TODO: fix this to be a better default
-    std::string bag_filename_default = get_absolute_directory("/rosbags/default.bag");
+    string bag_filename_default = get_absolute_directory("/rosbags/default.bag");
     nh.setParam(bag_filename, bag_filename_default);
   }
 
@@ -94,113 +70,92 @@ bool check_parameters(ros::NodeHandle& nh)
 }
 
 
-std::string get_absolute_directory(std::string local_dir)
-{
-  ROS_DEBUG_STREAM("getting the absolute path to " << local_dir);
-
-  std::string home_dir = getenv("HOME");
-  std::string absolute_path = home_dir + local_dir;
-
-  return absolute_path;
-}
-
-
-bool load_data(std::string& bag_filename, 
-                           std_msgs::String& description_msg,
-                           std::vector<robot_calibration_msgs::CalibrationData>& data)
-{
-  ROS_DEBUG("starting to load data.");
-
-  rosbag::Bag bag;
-  if(!open_rosbag(bag, bag_filename))
-    return false;
-
-  if(!load_robot_description(bag, description_msg))
-    return false;
-
-  if(!load_calibration_data(bag, data))
-    return false;
-
-  bag.close();
-
-  return true;
-}
-
-
-bool open_rosbag(rosbag::Bag& bag, std::string& bag_filename)
+optional<rosbag::Bag> open_rosbag(const string& bag_filename)
 {
   ROS_DEBUG_STREAM("openning rosbag: " << bag_filename);
-  bool success = true;
 
+  rosbag::Bag bag;
   try
-  { 
+  {
     bag.open(bag_filename, rosbag::bagmode::Read);
   }
-  catch (rosbag::BagException&)
+  catch (rosbag::BagException& exception)
   {
-    ROS_FATAL_STREAM("Could not open calibration rosbag: " << bag_filename);
-    success = false;
+    ROS_FATAL_STREAM(
+      "Exception thrown when opening rosbag (" << bag_filename << "): " << exception.what());
+    return nullopt;
   }
 
-  return success;
+  return bag;
 }
 
 
-bool load_robot_description(rosbag::Bag& bag, std_msgs::String& description_msg)
+optional<std_msgs::String> load_robot_description(const rosbag::Bag& bag)
 {
   ROS_DEBUG("loading robot description.");
-  bool success;
 
   rosbag::View bag_view(bag, rosbag::TopicQuery("/robot_description"));
 
   if (bag_view.size() < 1)
   {
     ROS_FATAL("'/robot_description' topic not found in rosbag file.");
-    success = false;
+    return nullopt;
   }
 
-// TODO: what if there are more than 1 found?
-  else
-  {
-    std_msgs::String::ConstPtr msg = bag_view.begin()->instantiate<std_msgs::String>();
-    description_msg = *msg;
-    success = true;
-  }
-
-  return success;
+  // TODO: what if there are more than 1 found?
+  return *(bag_view.begin()->instantiate<std_msgs::String>());
 }
 
 
-bool load_calibration_data(rosbag::Bag& bag, std::vector<robot_calibration_msgs::CalibrationData>& data)
+optional<vector<robot_calibration_msgs::CalibrationData>>
+load_calibration_data(const rosbag::Bag& bag)
 {
   ROS_DEBUG("loading calibration data.");
-  bool success;
 
   rosbag::View bag_view(bag, rosbag::TopicQuery("/calibration_data"));
 
   if (bag_view.size() < 1)
   {
     ROS_FATAL("'/calibration_data' topic not found in rosbag file.");
-    success = false;
+    return nullopt;
   }
 
+  vector<robot_calibration_msgs::CalibrationData> calibration_data;
   BOOST_FOREACH (rosbag::MessageInstance const m, bag_view)
   {
-    robot_calibration_msgs::CalibrationData::ConstPtr msg = m.instantiate<robot_calibration_msgs::CalibrationData>();
-    data.push_back(*msg);
-    success = true;
+    calibration_data.push_back(*(m.instantiate<robot_calibration_msgs::CalibrationData>()));
   }
 
-  return success;
+  return calibration_data;
 }
 
 
-void publish_messages(ros::NodeHandle& nh, std::vector<robot_calibration_msgs::CalibrationData>& data) {
+optional<pair<std_msgs::String, vector<robot_calibration_msgs::CalibrationData>>>
+load_data(const string& bag_filename)
+{
+  ROS_DEBUG("starting to load data.");
 
-  ros::Publisher pub = nh.advertise<robot_calibration_msgs::CalibrationData>("/calibration_data", 10);
+  auto bag = open_rosbag(bag_filename);
+  if (!bag) {
+    return nullopt;
+  }
 
-  for (auto msg : data)
+  const auto robot_description = load_robot_description(*bag);
+  if (!robot_description)
   {
-    pub.publish(msg);
+    bag->close();
+    return nullopt;
   }
+
+  const auto calibration_data = load_calibration_data(*bag);
+  if (!calibration_data)
+  {
+    bag->close();
+    return nullopt;
+  }
+
+  bag->close();
+  return pair{*robot_description, *calibration_data};
 }
+
+}  // namespace optimize_parameters
