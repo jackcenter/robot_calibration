@@ -210,17 +210,17 @@ std::vector<geometry_msgs::PointStamped> Camera3dModel::project(
    */
   double z_offset = 0.0;
   double z_scaling = 1.0;
-  for (size_t i = 0; i < data.observations[sensor_idx].ext_camera_info.parameters.size(); i++)
-  {
-    if (data.observations[sensor_idx].ext_camera_info.parameters[i].name == "z_scaling")
-    {
-      z_scaling = data.observations[sensor_idx].ext_camera_info.parameters[i].value;
-    }
-    else if (data.observations[sensor_idx].ext_camera_info.parameters[i].name == "z_offset_mm")
-    {
-      z_offset = data.observations[sensor_idx].ext_camera_info.parameters[i].value / 1000.0;  // (mm -> m)
-    }
-  }
+  // for (size_t i = 0; i < data.observations[sensor_idx].ext_camera_info.parameters.size(); i++)
+  // {
+  //   if (data.observations[sensor_idx].ext_camera_info.parameters[i].name == "z_scaling")
+  //   {
+  //     z_scaling = data.observations[sensor_idx].ext_camera_info.parameters[i].value;
+  //   }
+  //   else if (data.observations[sensor_idx].ext_camera_info.parameters[i].name == "z_offset_mm")
+  //   {
+  //     z_offset = data.observations[sensor_idx].ext_camera_info.parameters[i].value / 1000.0;  // (mm -> m)
+  //   }
+  // }
 
   // Get calibrated camera info
   double new_camera_fx = camera_fx * (1.0 + offsets.get(name_+"_fx"));
