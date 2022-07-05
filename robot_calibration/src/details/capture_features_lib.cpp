@@ -176,7 +176,7 @@ bool run_manual_capture(ros::NodeHandle nh,
     }
 
     // Wait for joints to settle
-    chain_manager.waitToSettle();
+    // chain_manager.waitToSettle();
     auto msg = capture_calibration_data(feature_finder);
 
     // Capture unsuccessful
