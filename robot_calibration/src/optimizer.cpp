@@ -159,9 +159,17 @@ int Optimizer::optimize(OptimizationParams& params,
                                                               offsets_.get(),
                                                               data[i]);
 
+        bool x_valid = true;
+        bool y_valid = true;
+        bool z_valid = true;
+
         // Output initial error
         if (progress_to_stdout)
         {
+          bool x_valid = true;
+          bool y_valid = true;
+          bool z_valid = true;
+
           double ** params = new double*[1];
           params[0] = free_params;
           double * residuals = new double[cost->num_residuals()];
@@ -170,19 +178,49 @@ int Optimizer::optimize(OptimizationParams& params,
 
           std::cout << "INITIAL COST (" << i << ")" << std::endl << "  x: ";
           for (size_t k = 0; k < static_cast<size_t>(cost->num_residuals() / 3); ++k)
+          {
             std::cout << "  " << std::setw(10) << std::fixed << residuals[(3*k + 0)];
+            if (isnan(residuals[(3*k + 0)])) 
+            {
+              x_valid = false;
+              break;
+            }
+          }
+          
           std::cout << std::endl << "  y: ";
           for (size_t k = 0; k < static_cast<size_t>(cost->num_residuals() / 3); ++k)
+          {
             std::cout << "  " << std::setw(10) << std::fixed << residuals[(3*k + 1)];
+            if (isnan(residuals[(3*k +1)])) 
+            {
+              y_valid = false;
+              break;
+            }
+          }
+
           std::cout << std::endl << "  z: ";
           for (size_t k = 0; k < static_cast<size_t>(cost->num_residuals() / 3); ++k)
+          {
             std::cout << "  " << std::setw(10) << std::fixed << residuals[(3*k + 2)];
+            if (isnan(residuals[(3*k + 2)])) 
+            {
+              z_valid = false;
+              break;
+            }
+          }
           std::cout << std::endl << std::endl;
         }
 
-        problem->AddResidualBlock(cost,
-                                  NULL,  // squared loss
-                                  free_params);
+        if (x_valid && y_valid && z_valid)
+        {
+          problem->AddResidualBlock(cost,
+                                    NULL,  // squared loss
+                                    free_params);
+        }
+        else
+        {
+          std::cout << "Tossing Bad Sample" << std::endl;
+        }
       }
       else if (params.error_blocks[j].type == "chain3d_to_plane")
       {
