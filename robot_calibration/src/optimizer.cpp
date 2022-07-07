@@ -166,10 +166,6 @@ int Optimizer::optimize(OptimizationParams& params,
         // Output initial error
         if (progress_to_stdout)
         {
-          bool x_valid = true;
-          bool y_valid = true;
-          bool z_valid = true;
-
           double ** params = new double*[1];
           params[0] = free_params;
           double * residuals = new double[cost->num_residuals()];
